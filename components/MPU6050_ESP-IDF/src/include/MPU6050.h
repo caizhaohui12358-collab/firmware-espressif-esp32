@@ -17,7 +17,7 @@
 #define MPU6050_I2C_SCL_IO          22
 #define MPU6050_I2C_SDA_IO          21
 #define MPU6050_I2C_NUM             I2C_NUM_0
-#define MPU6050_I2C_FREQ_HZ         400000
+#define MPU6050_I2C_FREQ_HZ         100000  /* 100kHz standard mode, more compatible with GY-521 modules */
 #define MPU6050_I2C_TIMEOUT_MS      1000
 
 /* I2C device addresses ----------------------------------------------------- */

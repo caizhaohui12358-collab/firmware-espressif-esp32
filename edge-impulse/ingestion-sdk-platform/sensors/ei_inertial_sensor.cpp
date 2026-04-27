@@ -53,17 +53,19 @@ static MPU6050 mpu;
 
 bool ei_inertial_init(void)
 {
-    if (mpu.begin(MPU6050_DEFAULT_ADDRESS) == false) {
-        EI_LOGW("Failed to connect to MPU6050!\n");
-        return false;
+    /* Auto-detect I2C address: 0x68 (AD0=GND) or 0x69 (AD0=VCC).
+     * Many GY-521 modules pull AD0 high by default. */
+    uint8_t addr = MPU6050_DEFAULT_ADDRESS;
+    if (mpu.begin(addr) == false) {
+        EI_LOGW("MPU6050 not found at 0x68, trying 0x69...\n");
+        addr = MPU6050_ADDRESS_AD0_HIGH;
+        if (mpu.begin(addr) == false) {
+            EI_LOGW("Failed to connect to MPU6050 at 0x68 and 0x69.\n"
+                    "Check wiring: SDA->GPIO21, SCL->GPIO22, VCC->3.3V, GND->GND\n");
+            return false;
+        }
     }
-
-    ei_sleep(100);
-
-    mpu.setAccelRange(MPU6050_ACCEL_RANGE_2G);
-    mpu.setGyroRange(MPU6050_GYRO_RANGE_250DPS);
-    mpu.setSampleRateDivider(9);   /* 100 Hz with 44 Hz DLPF */
-    mpu.setDLPF(MPU6050_DLPF_44HZ);
+    EI_LOGI("MPU6050 connected at I2C address 0x%02X\n", addr);
 
     if (ei_add_sensor_to_fusion_list(inertial_sensor) == false) {
         EI_LOGE("Failed to register Inertial sensor!\n");

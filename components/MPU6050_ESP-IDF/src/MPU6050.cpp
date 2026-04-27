@@ -42,9 +42,15 @@ bool MPU6050::begin(uint8_t address)
     conf.master.clk_speed = MPU6050_I2C_FREQ_HZ;
 
     i2c_param_config(MPU6050_I2C_NUM, &conf);
-    i2c_driver_install(MPU6050_I2C_NUM, conf.mode, 0, 0, 0);
 
-    DELAY_MS(100);
+    /* ESP_ERR_INVALID_STATE means the driver is already installed by another
+     * sensor on the same bus — treat that as success. */
+    esp_err_t err = i2c_driver_install(MPU6050_I2C_NUM, conf.mode, 0, 0, 0);
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        return false;
+    }
+
+    DELAY_MS(200);   /* allow MPU6050 power-on startup (datasheet: 30 ms min) */
 
     if (!isConnection()) {
         return false;
@@ -57,7 +63,7 @@ bool MPU6050::begin(uint8_t address)
     DELAY_MS(10);
 
     /* 100 Hz sample rate: SMPLRT_DIV = (gyro_output_rate / sample_rate) - 1
-     * With DLPF enabled gyro output = 1 kHz → DIV = 9 → 100 Hz */
+     * With DLPF enabled gyro output = 1 kHz, DIV = 9, 100 Hz */
     setSampleRateDivider(9);
     setDLPF(MPU6050_DLPF_44HZ);
 
