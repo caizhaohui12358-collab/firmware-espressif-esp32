@@ -42,9 +42,30 @@
 #include "edge-impulse-sdk/porting/ei_logging.h"
 
 #include "MPU6050.h"
+#include "driver/i2c.h"
 
 /* Constant defines -------------------------------------------------------- */
 #define CONVERT_G_TO_MS2    9.80665f
+
+static void i2c_scan(void)
+{
+    ei_printf("I2C bus scan (SDA=GPIO%d SCL=GPIO%d):\r\n",
+              MPU6050_I2C_SDA_IO, MPU6050_I2C_SCL_IO);
+    bool found = false;
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        uint8_t dummy;
+        esp_err_t ret = i2c_master_write_read_device(
+            MPU6050_I2C_NUM, addr, &dummy, 0, &dummy, 1,
+            100 / portTICK_PERIOD_MS);
+        if (ret == ESP_OK) {
+            ei_printf("  Found device at 0x%02X\r\n", addr);
+            found = true;
+        }
+    }
+    if (!found) {
+        ei_printf("  No I2C devices found. Check wiring.\r\n");
+    }
+}
 
 /* imu_data layout: [accX, accY, accZ, gyrX, gyrY, gyrZ] */
 static float imu_data[INERTIAL_AXIS_SAMPLED];
@@ -60,12 +81,14 @@ bool ei_inertial_init(void)
         EI_LOGW("MPU6050 not found at 0x68, trying 0x69...\n");
         addr = MPU6050_ADDRESS_AD0_HIGH;
         if (mpu.begin(addr) == false) {
+            /* Scan the bus to help diagnose wiring issues */
+            i2c_scan();
             EI_LOGW("Failed to connect to MPU6050 at 0x68 and 0x69.\n"
                     "Check wiring: SDA->GPIO21, SCL->GPIO22, VCC->3.3V, GND->GND\n");
             return false;
         }
     }
-    EI_LOGI("MPU6050 connected at I2C address 0x%02X\n", addr);
+    ei_printf("MPU6050 connected at I2C address 0x%02X\r\n", addr);
 
     if (ei_add_sensor_to_fusion_list(inertial_sensor) == false) {
         EI_LOGE("Failed to register Inertial sensor!\n");

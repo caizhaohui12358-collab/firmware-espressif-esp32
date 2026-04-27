@@ -11,7 +11,11 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "driver/i2c.h"
+#include "driver/gpio.h"
 #include "esp_idf_version.h"
+#include "esp_log.h"
+
+static const char *TAG = "MPU6050";
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #define portTICK_RATE_MS portTICK_PERIOD_MS
@@ -32,6 +36,12 @@ bool MPU6050::begin(uint8_t address)
 {
     devAddr = address;
 
+    /* Reset pins to a known default state before I2C config.
+     * Needed when other code (e.g. LED setup) previously set these
+     * GPIOs as push-pull outputs, which blocks open-drain I2C. */
+    gpio_reset_pin((gpio_num_t)MPU6050_I2C_SDA_IO);
+    gpio_reset_pin((gpio_num_t)MPU6050_I2C_SCL_IO);
+
     i2c_config_t conf = {
         .mode          = I2C_MODE_MASTER,
         .sda_io_num    = MPU6050_I2C_SDA_IO,
@@ -43,9 +53,12 @@ bool MPU6050::begin(uint8_t address)
 
     i2c_param_config(MPU6050_I2C_NUM, &conf);
 
-    /* ESP_ERR_INVALID_STATE means the driver is already installed by another
-     * sensor on the same bus — treat that as success. */
+    /* Suppress the built-in error log on "already installed" — expected
+     * when begin() is called a second time for address retry. */
+    esp_log_level_set("i2c", ESP_LOG_NONE);
     esp_err_t err = i2c_driver_install(MPU6050_I2C_NUM, conf.mode, 0, 0, 0);
+    esp_log_level_set("i2c", ESP_LOG_WARN);
+
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         return false;
     }
