@@ -1,0 +1,7 @@
+# ESP32 WROOM default configuration for EdgeImpulse + MPU6050 lab
+#
+# This file is applied automatically by idf.py on every clean build.
+# Edit here instead of modifying sdkconfig directly.
+
+# ESP32 WROOM does not have PSRAM — disable to avoid boot errors
+CONFIG_SPIRAM=n
