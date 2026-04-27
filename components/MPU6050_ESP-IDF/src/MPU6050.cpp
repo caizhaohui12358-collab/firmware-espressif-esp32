@@ -11,7 +11,6 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "driver/i2c.h"
-#include "driver/gpio.h"
 #include "esp_idf_version.h"
 #include "esp_log.h"
 
@@ -35,12 +34,6 @@ MPU6050::MPU6050()
 bool MPU6050::begin(uint8_t address)
 {
     devAddr = address;
-
-    /* Reset pins to a known default state before I2C config.
-     * Needed when other code (e.g. LED setup) previously set these
-     * GPIOs as push-pull outputs, which blocks open-drain I2C. */
-    gpio_reset_pin((gpio_num_t)MPU6050_I2C_SDA_IO);
-    gpio_reset_pin((gpio_num_t)MPU6050_I2C_SCL_IO);
 
     i2c_config_t conf = {
         .mode          = I2C_MODE_MASTER,

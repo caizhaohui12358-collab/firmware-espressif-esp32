@@ -33,7 +33,6 @@
  */
 
 /* Include ----------------------------------------------------------------- */
-#include "driver/gpio.h"
 #include "sdkconfig.h"
 #include "esp_idf_version.h"
 
@@ -48,31 +47,14 @@
 #include "ei_analogsensor.h"
 #include "ei_inertial_sensor.h"
 
-#define RED_LED_PIN GPIO_NUM_21
-#define WHITE_LED_PIN GPIO_NUM_22
+/* GPIO21 (SDA) and GPIO22 (SCL) are reserved for I2C (MPU6050).
+ * LED setup on these pins has been removed to avoid bus conflict. */
 
 EiDeviceInfo *EiDevInfo = dynamic_cast<EiDeviceInfo *>(EiDeviceESP32::get_device());
 static ATServer *at;
 
-/* Private variables ------------------------------------------------------- */
-
-/* Public functions -------------------------------------------------------- */
-
-void setup_led() {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-    esp_rom_gpio_pad_select_gpio(RED_LED_PIN);
-    esp_rom_gpio_pad_select_gpio(WHITE_LED_PIN);
-#elif ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 0, 0)
-    gpio_pad_select_gpio(RED_LED_PIN);
-    gpio_pad_select_gpio(WHITE_LED_PIN);
-#endif
-    gpio_set_direction(RED_LED_PIN, GPIO_MODE_OUTPUT);
-    gpio_set_direction(WHITE_LED_PIN, GPIO_MODE_OUTPUT);
-}
-
 extern "C" int app_main()
 {
-    setup_led();
 
     /* Initialize Edge Impulse sensors and commands */
 
