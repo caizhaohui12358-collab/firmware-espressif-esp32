@@ -41,29 +41,31 @@
 #include "edge-impulse-sdk/porting/ei_classifier_porting.h"
 #include "edge-impulse-sdk/porting/ei_logging.h"
 
-#include "LIS3DHTR.h"
+#include "MPU6050.h"
 
 /* Constant defines -------------------------------------------------------- */
 #define CONVERT_G_TO_MS2    9.80665f
 
+/* imu_data layout: [accX, accY, accZ, gyrX, gyrY, gyrZ] */
 static float imu_data[INERTIAL_AXIS_SAMPLED];
 
-LIS3DHTR lis;
+static MPU6050 mpu;
 
-bool ei_inertial_init(void) {
-
-    lis.begin(LIS3DHTR_DEFAULT_ADDRESS);
-
-    if(lis.isConnection() == false) {
-        EI_LOGW("Failed to connect to Inertial sensor!\n");
+bool ei_inertial_init(void)
+{
+    if (mpu.begin(MPU6050_DEFAULT_ADDRESS) == false) {
+        EI_LOGW("Failed to connect to MPU6050!\n");
         return false;
     }
 
     ei_sleep(100);
-    lis.setFullScaleRange(LIS3DHTR_RANGE_2G);
-    lis.setOutputDataRate(LIS3DHTR_DATARATE_100HZ);
 
-    if(ei_add_sensor_to_fusion_list(inertial_sensor) == false) {
+    mpu.setAccelRange(MPU6050_ACCEL_RANGE_2G);
+    mpu.setGyroRange(MPU6050_GYRO_RANGE_250DPS);
+    mpu.setSampleRateDivider(9);   /* 100 Hz with 44 Hz DLPF */
+    mpu.setDLPF(MPU6050_DLPF_44HZ);
+
+    if (ei_add_sensor_to_fusion_list(inertial_sensor) == false) {
         EI_LOGE("Failed to register Inertial sensor!\n");
         return false;
     }
@@ -73,11 +75,20 @@ bool ei_inertial_init(void) {
 
 float *ei_fusion_inertial_read_data(int n_samples)
 {
-    
-    lis.getAcceleration(&imu_data[0], &imu_data[1], &imu_data[2]);
-    imu_data[0] *= CONVERT_G_TO_MS2;
-    imu_data[1] *= CONVERT_G_TO_MS2;
-    imu_data[2] *= CONVERT_G_TO_MS2;
-    
+    float ax, ay, az, gx, gy, gz;
+
+    /* Single burst read: accel XYZ + temp (skipped) + gyro XYZ */
+    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+    /* Convert g → m/s² for accelerometer */
+    imu_data[0] = ax * CONVERT_G_TO_MS2;
+    imu_data[1] = ay * CONVERT_G_TO_MS2;
+    imu_data[2] = az * CONVERT_G_TO_MS2;
+
+    /* Gyroscope already in degrees/second */
+    imu_data[3] = gx;
+    imu_data[4] = gy;
+    imu_data[5] = gz;
+
     return imu_data;
 }
