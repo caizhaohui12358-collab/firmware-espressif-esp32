@@ -149,26 +149,15 @@ echo "CONFIG_SPIRAM_IGNORE_NOTFOUND=y" >> sdkconfig.defaults
 rm -f sdkconfig && idf.py reconfigure
 ```
 
-### 重新生成 sdkconfig
-
-`sdkconfig` 文件已从版本控制中移除（加入了 `.gitignore`），每次克隆仓库后需要生成：
-
-```bash
-# 首次编译时会自动从 sdkconfig.defaults 生成 sdkconfig
-idf.py build
-
-# 或手动生成（不编译）
-idf.py reconfigure
-```
-
 ### sdkconfig 与 sdkconfig.defaults 的关系
 
 | 文件 | 说明 |
 |---|---|
-| `sdkconfig.defaults` | **版本控制中的配置模板**，记录项目级默认值，手动维护 |
-| `sdkconfig` | **编译器实际使用的配置**，由 `idf.py` 自动生成，不纳入版本控制 |
+| `sdkconfig` | **编译器实际使用的配置**，随工程一起分发，直接打开即可编译 |
+| `sdkconfig.defaults` | **配置模板参考**，仅在 `sdkconfig` 不存在时自动生效；用于重置配置 |
 
-> 修改 `sdkconfig.defaults` 后，需删除 `sdkconfig` 并重新运行 `idf.py reconfigure` 才能生效。
+> 直接使用 Espressif IDE 打开工程文件夹时，`sdkconfig` 已配置好，无需额外操作。
+> 若需要重置为默认配置：删除 `sdkconfig`，再通过 IDE 的 SDK Configuration Editor 或命令行 `idf.py reconfigure` 重新生成。
 
 ---
 

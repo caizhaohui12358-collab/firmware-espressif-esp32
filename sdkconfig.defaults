@@ -1,12 +1,14 @@
-# ESP32 Edge Impulse Firmware - Default SDK Configuration
+# ESP32 Edge Impulse Firmware - SDK Configuration Defaults
 #
-# This file is the source of truth for build configuration.
-# The generated sdkconfig file is excluded from version control.
+# This file provides fallback defaults when sdkconfig does not exist.
+# Normal usage: open the project folder in Espressif IDE and compile directly,
+# sdkconfig is already present and pre-configured.
 #
-# To rebuild sdkconfig from scratch:
-#   rm -f sdkconfig && idf.py reconfigure
+# To reset sdkconfig from scratch:
+#   Delete sdkconfig, then run: idf.py reconfigure
 #
 # To enable PSRAM (for boards like ESP-EYE that have external RAM):
+#   Use SDK Configuration Editor in Espressif IDE, or:
 #   idf.py menuconfig -> Component config -> ESP32-specific -> Support for external, SPI-connected RAM
 
 # CPU

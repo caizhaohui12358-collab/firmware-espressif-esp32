@@ -34,10 +34,6 @@
 /build
 /temp
 
-# Generated SDK configuration - source of truth is sdkconfig.defaults
-# Delete this file and run "idf.py reconfigure" to regenerate from sdkconfig.defaults
-/sdkconfig
-
 #/firmware-sdk
 
 /.vscode
