@@ -1,0 +1,40 @@
+# ESP32 Edge Impulse Firmware - Default SDK Configuration
+#
+# This file is the source of truth for build configuration.
+# The generated sdkconfig file is excluded from version control.
+#
+# To rebuild sdkconfig from scratch:
+#   rm -f sdkconfig && idf.py reconfigure
+#
+# To enable PSRAM (for boards like ESP-EYE that have external RAM):
+#   idf.py menuconfig -> Component config -> ESP32-specific -> Support for external, SPI-connected RAM
+
+# CPU
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+
+# Compiler
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# Flash
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+
+# Partition table
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# FreeRTOS
+CONFIG_FREERTOS_HZ=1000
+CONFIG_FREERTOS_ISR_STACKSIZE=1536
+
+# Main task stack size (needs to be large enough for EI SDK)
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=12288
+
+# PSRAM disabled by default - safe for boards without external RAM
+# Students using ESP-EYE or other boards with PSRAM should enable this
+# via menuconfig or by adding CONFIG_SPIRAM=y to their local sdkconfig
+CONFIG_SPIRAM=n
+
+# Logging
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y

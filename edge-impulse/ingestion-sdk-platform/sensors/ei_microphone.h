@@ -40,6 +40,28 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+/**
+ * I2S microphone pin configuration (compatible with INMP441 and similar).
+ * Override these defines in your board configuration if needed.
+ *
+ * INMP441 wiring:
+ *   INMP441 SCK  -> GPIO defined by EI_MIC_I2S_SCK
+ *   INMP441 WS   -> GPIO defined by EI_MIC_I2S_WS
+ *   INMP441 SD   -> GPIO defined by EI_MIC_I2S_SD
+ *   INMP441 L/R  -> GND (selects left channel)
+ *   INMP441 VDD  -> 3.3V
+ *   INMP441 GND  -> GND
+ */
+#ifndef EI_MIC_I2S_SCK
+#define EI_MIC_I2S_SCK  26   /* Bit clock (BCLK / SCK) */
+#endif
+#ifndef EI_MIC_I2S_WS
+#define EI_MIC_I2S_WS   32   /* Word select / L-R clock (WS / LRCLK) */
+#endif
+#ifndef EI_MIC_I2S_SD
+#define EI_MIC_I2S_SD   33   /* Serial data input (SD / DOUT) */
+#endif
+
 /* Function prototypes ----------------------------------------------------- */
 bool ei_microphone_inference_start(uint32_t n_samples, float interval_ms);
 

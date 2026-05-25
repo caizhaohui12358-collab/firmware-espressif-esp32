@@ -490,10 +490,10 @@ int i2s_init(uint32_t sampling_rate) {
       .fixed_mclk = -1,
   };
   i2s_pin_config_t pin_config = {
-      .bck_io_num = 26,    // IIS_SCLK
-      .ws_io_num = 32,     // IIS_LCLK
-      .data_out_num = -1,  // IIS_DSIN
-      .data_in_num = 33,   // IIS_DOUT
+      .bck_io_num   = EI_MIC_I2S_SCK,  // SCK / BCLK
+      .ws_io_num    = EI_MIC_I2S_WS,   // WS / LRCLK
+      .data_out_num = -1,               // not used (RX only)
+      .data_in_num  = EI_MIC_I2S_SD,   // SD / data in
   };
   esp_err_t ret = 0;
 
