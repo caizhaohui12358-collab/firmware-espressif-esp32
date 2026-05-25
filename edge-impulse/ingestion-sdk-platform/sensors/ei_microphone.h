@@ -63,14 +63,25 @@
 #endif
 
 /**
- * Bit-shift applied when converting the 32-bit I2S frame to int16 audio.
- * INMP441 places 24-bit audio in bits[31:8] of the 32-bit word.
- * Larger shift = quieter (more headroom); smaller shift = louder (may clip).
- *   14 → safe default, ~14 dB headroom at 94 dB SPL
- *   11 → louder, suitable for quiet environments
+ * Two-stage gain for INMP441 → int16 conversion.
+ *
+ * Stage 1 – EI_MIC_GAIN_SHIFT (right-shift)
+ *   INMP441 puts 24-bit audio in bits[31:8] of the 32-bit I2S word,
+ *   so the raw int32 can reach ±2^31. Shifting by 16 maps the 24-bit
+ *   full-scale value exactly into the int16 range (±32767) with no risk
+ *   of integer overflow or wrap-around.  Do NOT reduce below 16.
+ *
+ * Stage 2 – EI_MIC_GAIN_MUL (integer multiplier, applied after shift)
+ *   Compensates for the INMP441's -26 dBFS sensitivity. A multiplier of
+ *   8 brings normal conversational speech (~65 dB SPL at 0.5 m) to a
+ *   comfortable recording level. Saturation clamping prevents clipping.
+ *   Increase if audio is too quiet; decrease if peaks still clip.
  */
 #ifndef EI_MIC_GAIN_SHIFT
-#define EI_MIC_GAIN_SHIFT  14
+#define EI_MIC_GAIN_SHIFT  16
+#endif
+#ifndef EI_MIC_GAIN_MUL
+#define EI_MIC_GAIN_MUL    8
 #endif
 
 /* Function prototypes ----------------------------------------------------- */

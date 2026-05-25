@@ -158,12 +158,17 @@ static void capture_samples(void* arg) {
             ESP_LOGW(TAG, "Partial I2S read");
         }
 
-        // Convert 32-bit INMP441 frame to 16-bit: data sits in bits[31:8],
-        // shift right 14 to keep the top 18 bits then truncate to int16.
-        // Adjust EI_MIC_GAIN_SHIFT (default 14) if audio is too quiet or clips.
+        // Convert 32-bit INMP441 frame to int16 in two stages:
+        // 1. >> 16 (EI_MIC_GAIN_SHIFT): 24-bit audio sits in raw32[31:8],
+        //    so shifting by 16 maps full-scale to ±32767 with no overflow.
+        // 2. * EI_MIC_GAIN_MUL: software gain for INMP441's -26 dBFS sensitivity.
+        // Saturate before cast so loud peaks clip cleanly, not wrap around.
         int n_samples = bytes_read / 4;
         for (int x = 0; x < n_samples; x++) {
-            sampleBuffer[x] = (int16_t)(raw32[x] >> EI_MIC_GAIN_SHIFT);
+            int32_t val = ((int32_t)raw32[x] >> EI_MIC_GAIN_SHIFT) * EI_MIC_GAIN_MUL;
+            if      (val >  32767) val =  32767;
+            else if (val < -32768) val = -32768;
+            sampleBuffer[x] = (int16_t)val;
         }
         uint32_t out_bytes = (uint32_t)(n_samples * sizeof(int16_t));
 
