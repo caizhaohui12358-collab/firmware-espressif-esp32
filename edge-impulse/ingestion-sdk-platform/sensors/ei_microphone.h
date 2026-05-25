@@ -63,25 +63,24 @@
 #endif
 
 /**
- * Two-stage gain for INMP441 → int16 conversion.
+ * Three-stage signal chain for INMP441 -> int16 conversion:
+ *   raw int32  -->  [>> SHIFT]  -->  [DC-block HPF ~40 Hz]  -->  [* MUL + sat]  -->  int16
  *
- * Stage 1 – EI_MIC_GAIN_SHIFT (right-shift)
- *   INMP441 puts 24-bit audio in bits[31:8] of the 32-bit I2S word,
- *   so the raw int32 can reach ±2^31. Shifting by 16 maps the 24-bit
- *   full-scale value exactly into the int16 range (±32767) with no risk
- *   of integer overflow or wrap-around.  Do NOT reduce below 16.
+ * EI_MIC_GAIN_SHIFT (right-shift, do NOT go below 16)
+ *   INMP441 24-bit audio sits in bits[31:8] of the 32-bit I2S word;
+ *   the raw int32 can reach +-2^31.  Shift 16 maps full-scale to +-32767
+ *   with zero risk of integer overflow/wrap-around.
  *
- * Stage 2 – EI_MIC_GAIN_MUL (integer multiplier, applied after shift)
- *   Compensates for the INMP441's -26 dBFS sensitivity. A multiplier of
- *   8 brings normal conversational speech (~65 dB SPL at 0.5 m) to a
- *   comfortable recording level. Saturation clamping prevents clipping.
- *   Increase if audio is too quiet; decrease if peaks still clip.
+ * EI_MIC_GAIN_MUL (integer multiplier after DC block, default 4)
+ *   Compensates for INMP441's -26 dBFS sensitivity.  Saturation clamping
+ *   is applied before the final int16 cast so peaks clip cleanly.
+ *   Raise to 8 if audio is too quiet; lower to 2 if peaks still clip.
  */
 #ifndef EI_MIC_GAIN_SHIFT
 #define EI_MIC_GAIN_SHIFT  16
 #endif
 #ifndef EI_MIC_GAIN_MUL
-#define EI_MIC_GAIN_MUL    8
+#define EI_MIC_GAIN_MUL    4
 #endif
 
 /* Function prototypes ----------------------------------------------------- */

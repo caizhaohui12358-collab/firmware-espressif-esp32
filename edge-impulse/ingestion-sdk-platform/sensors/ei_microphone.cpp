@@ -81,6 +81,9 @@ static uint32_t audio_sampling_frequency = 16000;
 
 static inference_t inference;
 
+// DC-blocking filter state (first-order IIR high-pass, fc ≈ 40 Hz at 16 kHz)
+static int32_t s_dc_block = 0;
+
 static unsigned char ei_mic_ctx_buffer[1024];
 static sensor_aq_signing_ctx_t ei_mic_signing_ctx;
 static sensor_aq_mbedtls_hs256_ctx_t ei_mic_hs_ctx;
@@ -158,14 +161,17 @@ static void capture_samples(void* arg) {
             ESP_LOGW(TAG, "Partial I2S read");
         }
 
-        // Convert 32-bit INMP441 frame to int16 in two stages:
-        // 1. >> 16 (EI_MIC_GAIN_SHIFT): 24-bit audio sits in raw32[31:8],
-        //    so shifting by 16 maps full-scale to ±32767 with no overflow.
-        // 2. * EI_MIC_GAIN_MUL: software gain for INMP441's -26 dBFS sensitivity.
-        // Saturate before cast so loud peaks clip cleanly, not wrap around.
+        // Convert 32-bit INMP441 frame → int16:
+        //  1. >> EI_MIC_GAIN_SHIFT (16): maps 24-bit full-scale to ±32767 (no overflow)
+        //  2. DC-blocking HPF (~40 Hz cutoff): removes DC drift and infrasound rumble
+        //  3. * EI_MIC_GAIN_MUL (4): software gain with saturating clamp
         int n_samples = bytes_read / 4;
         for (int x = 0; x < n_samples; x++) {
-            int32_t val = ((int32_t)raw32[x] >> EI_MIC_GAIN_SHIFT) * EI_MIC_GAIN_MUL;
+            int32_t val = (int32_t)raw32[x] >> EI_MIC_GAIN_SHIFT;
+            // First-order IIR DC block: y = x - lpf(x), alpha = 1/64, fc ≈ fs/402
+            s_dc_block += (val - s_dc_block) >> 6;
+            val -= s_dc_block;
+            val *= EI_MIC_GAIN_MUL;
             if      (val >  32767) val =  32767;
             else if (val < -32768) val = -32768;
             sampleBuffer[x] = (int16_t)val;
@@ -493,6 +499,7 @@ bool ei_microphone_sample_start(void)
 }
 
 int i2s_init(uint32_t sampling_rate) {
+  s_dc_block = 0;  // reset DC-block filter state at each new recording session
   // INMP441: RX only, 32-bit word (24-bit audio in MSB), left channel (L/R to GND)
   i2s_config_t i2s_config = {
       .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
