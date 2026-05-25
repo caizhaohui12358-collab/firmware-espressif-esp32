@@ -40,24 +40,26 @@ INMP441 是一款全向 MEMS 数字麦克风，使用标准 I2S 接口，适合�
 
 ### 修改引脚
 
-如需使用其他 GPIO，在 **`ei_microphone.h`** 的 include 之前定义以下宏即可覆盖默认值：
+如需使用其他 GPIO，直接修改 **`ei_microphone.h`** 中的宏定义即可：
 
 ```c
-// 在 CMakeLists.txt 中添加编译选项，或在项目配置头文件中定义
 #define EI_MIC_I2S_SCK  14   // 自定义 SCK 引脚
 #define EI_MIC_I2S_WS   15   // 自定义 WS 引脚
 #define EI_MIC_I2S_SD   13   // 自定义 SD 引脚
 ```
 
-或在 `main/CMakeLists.txt` 中追加编译定义：
+### 音量调节（EI_MIC_GAIN_SHIFT）
 
-```cmake
-target_compile_definitions(${COMPONENT_TARGET} PUBLIC
-    EI_MIC_I2S_SCK=14
-    EI_MIC_I2S_WS=15
-    EI_MIC_I2S_SD=13
-)
-```
+INMP441 采用 24-bit 数字输出，固件以 32-bit 模式读取后右移提取 16-bit 音频。
+通过修改 `ei_microphone.h` 中的 `EI_MIC_GAIN_SHIFT` 调节输出音量：
+
+| `EI_MIC_GAIN_SHIFT` | 效果 |
+|:---:|:---|
+| **14**（默认）| 安全值，约 14 dB 余量，适合大多数环境 |
+| **11** | 更响，适合安静环境或距离较远的声源 |
+| **16** | 最保守，仅适合极响环境 |
+
+> **技术原因：** INMP441 的 24-bit 音频数据位于 32-bit I2S 帧的 [31:8] 位。右移 14 位后取低 16 位，等效于保留了最高有效的 18 位再截断。
 
 ### EI 平台使用流程
 
@@ -71,10 +73,12 @@ target_compile_definitions(${COMPONENT_TARGET} PUBLIC
 
 | 现象 | 可能原因 | 解决方法 |
 |---|---|---|
-| 采集到全零数据 | L/R 引脚悬空 | 将 L/R 接 GND |
-| 音量极小 | 增益不足 | 代码中 `sampleBuffer[x] * 8` 的倍数可适当增大 |
+| 无声音时也有波形 | I2S TX 模式未关闭（旧固件） | 已修复：固件现在只启用 `I2S_MODE_RX` |
+| 有声音时有爆破声 | 16-bit 读取 INMP441（读到错误字节）+ ×8 溢出 | 已修复：32-bit 读取 + 右移转换，无额外增益 |
+| 采集到全零数据 | L/R 引脚悬空 | 将 L/R 接 GND（选左声道） |
+| 音量太小 | 增益不足 | 将 `EI_MIC_GAIN_SHIFT` 从 14 改为 11 |
+| 音量太大 / 仍有爆音 | 增益过强 | 将 `EI_MIC_GAIN_SHIFT` 改为 16 |
 | I2S 初始化失败 | 引脚冲突 | 检查所用 GPIO 是否被其他外设占用 |
-| 编译报 `I2S_COMM_FORMAT_I2S` 警告 | IDF 版本差异 | ESP-IDF 5.x 中该常量已更名，可忽略警告或升级固件 |
 
 ---
 

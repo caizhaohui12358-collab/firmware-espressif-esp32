@@ -133,40 +133,53 @@ static void audio_inference_callback(uint32_t n_bytes)
 static void capture_samples(void* arg) {
 
   const int32_t i2s_bytes_to_read = (uint32_t)arg;
-  size_t bytes_read = i2s_bytes_to_read;
+  size_t bytes_read;
+
+  // INMP441 outputs 24-bit samples in a 32-bit I2S frame.
+  // Read as 32-bit words then right-shift to extract 16-bit audio;
+  // reading in 16-bit mode picks up the wrong bytes and causes distortion.
+  int32_t *raw32 = (int32_t *)malloc(i2s_bytes_to_read * 2);
+  if (!raw32) {
+      ESP_LOGE(TAG, "Failed to allocate I2S read buffer");
+      vTaskDelete(NULL);
+      return;
+  }
 
   while (record_status) {
 
-    /* read data at once from i2s */
-    i2s_read((i2s_port_t)1, (void*)sampleBuffer, i2s_bytes_to_read, &bytes_read, 100);
+    // Read 32-bit words; 2x bytes yields the same number of 16-bit output samples
+    i2s_read((i2s_port_t)1, raw32, i2s_bytes_to_read * 2, &bytes_read, 100);
 
     if (bytes_read <= 0) {
       ESP_LOGE(TAG, "Error in I2S read : %d", bytes_read);
     }
     else {
-        if (bytes_read < i2s_bytes_to_read) {
-        ESP_LOGW(TAG, "Partial I2S read");
+        if (bytes_read < i2s_bytes_to_read * 2) {
+            ESP_LOGW(TAG, "Partial I2S read");
         }
 
-        // scale the data (otherwise the sound is too quiet)
-        for (int x = 0; x < i2s_bytes_to_read/2; x++) {
-            sampleBuffer[x] = (int16_t)(sampleBuffer[x]) * 8;
+        // Convert 32-bit INMP441 frame to 16-bit: data sits in bits[31:8],
+        // shift right 14 to keep the top 18 bits then truncate to int16.
+        // Adjust EI_MIC_GAIN_SHIFT (default 14) if audio is too quiet or clips.
+        int n_samples = bytes_read / 4;
+        for (int x = 0; x < n_samples; x++) {
+            sampleBuffer[x] = (int16_t)(raw32[x] >> EI_MIC_GAIN_SHIFT);
         }
+        uint32_t out_bytes = (uint32_t)(n_samples * sizeof(int16_t));
 
-        // see if are recording samples for ingestion
-        // or inference and send them their way
         if (record_status == 1) {
-            audio_write_callback(i2s_bytes_to_read);
+            audio_write_callback(out_bytes);
         }
         else if (record_status == 2) {
-            audio_inference_callback(i2s_bytes_to_read);
+            audio_inference_callback(out_bytes);
         }
         else {
             break;
         }
-
     }
   }
+
+  free(raw32);
   vTaskDelete(NULL);
 }
 
@@ -475,11 +488,11 @@ bool ei_microphone_sample_start(void)
 }
 
 int i2s_init(uint32_t sampling_rate) {
-  // Start listening for audio: MONO @ 8/16KHz
+  // INMP441: RX only, 32-bit word (24-bit audio in MSB), left channel (L/R to GND)
   i2s_config_t i2s_config = {
-      .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX),
+      .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
       .sample_rate = sampling_rate,
-      .bits_per_sample = (i2s_bits_per_sample_t)16,
+      .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
       .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
       .communication_format = I2S_COMM_FORMAT_I2S,
       .intr_alloc_flags = 0,

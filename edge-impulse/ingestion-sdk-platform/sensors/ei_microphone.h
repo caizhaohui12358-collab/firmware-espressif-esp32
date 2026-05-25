@@ -62,6 +62,17 @@
 #define EI_MIC_I2S_SD   33   /* Serial data input (SD / DOUT) */
 #endif
 
+/**
+ * Bit-shift applied when converting the 32-bit I2S frame to int16 audio.
+ * INMP441 places 24-bit audio in bits[31:8] of the 32-bit word.
+ * Larger shift = quieter (more headroom); smaller shift = louder (may clip).
+ *   14 → safe default, ~14 dB headroom at 94 dB SPL
+ *   11 → louder, suitable for quiet environments
+ */
+#ifndef EI_MIC_GAIN_SHIFT
+#define EI_MIC_GAIN_SHIFT  14
+#endif
+
 /* Function prototypes ----------------------------------------------------- */
 bool ei_microphone_inference_start(uint32_t n_samples, float interval_ms);
 
